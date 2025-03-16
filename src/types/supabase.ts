@@ -9,14 +9,170 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      client_documents: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          name: string
+          updated_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          name: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          city: string | null
+          company: string | null
+          country: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          state: string | null
+          status: string | null
+          updated_at: string | null
+          zip: string | null
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zip?: string | null
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          status?: string | null
+          updated_at?: string | null
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_invitations: {
+        Row: {
+          created_at: string | null
+          id: string
+          invite_url: string | null
+          recipient_email: string
+          recipient_name: string | null
+          role: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invite_url?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          role: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invite_url?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          role?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
+          active: boolean | null
           avatar_url: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
           image: string | null
+          invitation_accepted: boolean | null
+          invitation_sent: boolean | null
+          invitation_sent_at: string | null
           name: string | null
           role: string | null
           token_identifier: string
@@ -24,12 +180,16 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          active?: boolean | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
           image?: string | null
+          invitation_accepted?: boolean | null
+          invitation_sent?: boolean | null
+          invitation_sent_at?: string | null
           name?: string | null
           role?: string | null
           token_identifier: string
@@ -37,12 +197,16 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          active?: boolean | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           image?: string | null
+          invitation_accepted?: boolean | null
+          invitation_sent?: boolean | null
+          invitation_sent_at?: string | null
           name?: string | null
           role?: string | null
           token_identifier?: string
@@ -53,7 +217,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      email_invitations_view: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          invite_url: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          role: string | null
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          invite_url?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          role?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          invite_url?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          role?: string | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

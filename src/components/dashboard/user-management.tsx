@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "../../../supabase/client";
-import { UserPlus, UserCog, UserX, Search } from "lucide-react";
+import { UserPlus, UserCog, UserX, Search, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import UserInvitation from "./user-invitation";
+import { useToast } from "@/components/ui/use-toast";
 
 interface User {
   id: string;
@@ -38,6 +41,7 @@ export default function UserManagement() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const { toast } = useToast();
 
   // Form states
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -60,7 +64,23 @@ export default function UserManagement() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+
+      // Log the data to see what's coming back
+      console.log("Fetched users data:", data);
+
+      // Filter out any null entries and ensure all required fields
+      const validUsers = (data || [])
+        .filter((user) => {
+          return user && user.id && user.email;
+        })
+        .map((user) => ({
+          ...user,
+          role: user.role || "Employee",
+          full_name: user.full_name || user.name || "Unknown User",
+        }));
+
+      console.log("Processed users data:", validUsers);
+      setUsers(validUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
     } finally {
@@ -70,24 +90,42 @@ export default function UserManagement() {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role?.toLowerCase().includes(searchTerm.toLowerCase()),
+      (user.email &&
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (user.full_name &&
+        user.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (user.role && user.role.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   const handleAddUser = async () => {
     try {
       // In a real application, you would use Supabase Auth Admin API to create users
       // For this demo, we'll just add to the users table
-      const { error } = await supabase.from("users").insert([
-        {
-          email: newUserEmail,
-          full_name: newUserName,
-          role: newUserRole,
-        },
-      ]);
+      const userId = crypto.randomUUID();
+      const newUser = {
+        id: userId,
+        email: newUserEmail,
+        full_name: newUserName,
+        role: newUserRole,
+        token_identifier: newUserEmail,
+        created_at: new Date().toISOString(),
+        active: true,
+        user_id: userId, // Add user_id field to match existing structure
+      };
 
-      if (error) throw error;
+      console.log("Adding new user:", newUser);
+
+      const { error, data } = await supabase
+        .from("users")
+        .insert([newUser])
+        .select();
+
+      if (error) {
+        console.error("Detailed error:", error);
+        throw error;
+      }
+
+      console.log("User added successfully:", data);
 
       // Reset form and close dialog
       setNewUserEmail("");
@@ -99,6 +137,11 @@ export default function UserManagement() {
       fetchUsers();
     } catch (error) {
       console.error("Error adding user:", error);
+      toast({
+        title: "Error adding user",
+        description: error.message || "Unknown error",
+        variant: "destructive",
+      });
     }
   };
 
@@ -129,17 +172,24 @@ export default function UserManagement() {
     try {
       // In a real application, you would use Supabase Auth Admin API to deactivate users
       // For this demo, we'll just update the users table
-      const { error } = await supabase
-        .from("users")
-        .update({ active: false })
-        .eq("id", userId);
+      const { error } = await supabase.from("users").delete().eq("id", userId);
 
       if (error) throw error;
+
+      toast({
+        title: "User removed",
+        description: "The user has been successfully removed",
+      });
 
       // Refresh user list
       fetchUsers();
     } catch (error) {
-      console.error("Error deactivating user:", error);
+      console.error("Error removing user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove user",
+        variant: "destructive",
+      });
     }
   };
 
@@ -157,61 +207,89 @@ export default function UserManagement() {
           <DialogTrigger asChild>
             <Button className="bg-orange-600 hover:bg-orange-700">
               <UserPlus className="h-4 w-4 mr-2" />
-              Add New User
+              Add User
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
+              <DialogTitle>Add User</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="user@example.com"
+
+            <Tabs defaultValue="invite" className="w-full mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="invite">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Invitation
+                </TabsTrigger>
+                <TabsTrigger value="manual">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Manual Entry
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="invite" className="mt-4">
+                <UserInvitation
+                  onInviteSent={() => {
+                    setIsAddUserOpen(false);
+                    fetchUsers();
+                  }}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={newUserRole} onValueChange={setNewUserRole}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Super Admin">Super Admin</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Project Manager">
-                      Project Manager
-                    </SelectItem>
-                    <SelectItem value="Employee">Employee</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="bg-orange-600 hover:bg-orange-700"
-                onClick={handleAddUser}
-              >
-                Add User
-              </Button>
-            </DialogFooter>
+              </TabsContent>
+
+              <TabsContent value="manual" className="mt-4">
+                <div className="grid gap-4 py-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={newUserRole} onValueChange={setNewUserRole}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Super Admin">Super Admin</SelectItem>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Project Manager">
+                          Project Manager
+                        </SelectItem>
+                        <SelectItem value="Employee">Employee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAddUserOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={handleAddUser}
+                  >
+                    Add User
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
@@ -255,10 +333,15 @@ export default function UserManagement() {
                     <p className="text-sm text-muted-foreground">
                       {user.email}
                     </p>
-                    <div className="mt-1">
+                    <div className="mt-1 flex gap-2">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                         {user.role}
                       </span>
+                      {user.invitation_sent && !user.invitation_accepted && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Invitation Sent
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -277,7 +360,7 @@ export default function UserManagement() {
                       onClick={() => handleDeactivateUser(user.id)}
                     >
                       <UserX className="h-4 w-4 mr-1" />
-                      Deactivate
+                      Remove
                     </Button>
                   </div>
                 </div>

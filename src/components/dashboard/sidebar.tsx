@@ -12,6 +12,7 @@ import {
   Calendar,
   LifeBuoy,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { createClient } from "../../../supabase/client";
 import { useRouter } from "next/navigation";
@@ -52,6 +53,11 @@ export default function Sidebar({ role = "Employee" }: SidebarProps) {
         title: "User Management",
         icon: <Users className="h-5 w-5" />,
         href: "/dashboard/user-management",
+      },
+      {
+        title: "Email Invitations",
+        icon: <Mail className="h-5 w-5" />,
+        href: "/dashboard/email-invitations",
       },
       {
         title: "Reports",
